@@ -26,7 +26,7 @@ intents.message_content = True
 
 bot = commands.Bot(command_prefix="!", intents=intents)
 
-# SoundCloud Search Configuration (YouTube block পুরোপুরি এড়ানোর জন্য)
+# SoundCloud Search Config (YouTube block এবং 'url' error এড়ানোর জন্য)
 ytdl_format_options = {
     'format': 'bestaudio/best',
     'noplaylist': True,
@@ -51,8 +51,8 @@ async def on_ready():
     except Exception as e:
         print(e)
 
-@bot.tree.command(name="play", description="Search and play any song or naat")
-async def play(interaction: discord.Interaction, search: str):
+@bot.tree.command(name="play", description="Search and play song")
+async def play(interaction: discord.Interaction, query: str):
     await interaction.response.defer()
     
     if not interaction.user.voice:
@@ -70,14 +70,22 @@ async def play(interaction: discord.Interaction, search: str):
 
         loop = asyncio.get_event_loop()
         
-        # SoundCloud থেকে সরাসরি সার্চ করে অডিও লিংক বের করবে
-        data = await loop.run_in_executor(None, lambda: ytdl.extract_info(search, download=False))
+        # Safe extraction for SoundCloud search query
+        data = await loop.run_in_executor(None, lambda: ytdl.extract_info(query, download=False))
         
-        if 'entries' in data and len(data['entries']) > 0:
-            data = data['entries'][0]
+        if 'entries' in data:
+            if len(data['entries']) > 0:
+                data = data['entries'][0]
+            else:
+                await interaction.followup.send("❌ Kono gan khuje pawa jayni!")
+                return
 
-        filename = data['url']
+        filename = data.get('url')
         title = data.get('title', 'Requested Audio')
+
+        if not filename:
+            await interaction.followup.send("❌ Audio URL extract kora সম্ভব হয়নি!")
+            return
 
         if bot_vc.is_playing() or bot_vc.is_paused():
             bot_vc.stop()
@@ -89,7 +97,7 @@ async def play(interaction: discord.Interaction, search: str):
     except Exception as e:
         await interaction.followup.send(f"❌ Gan bajate somossha hocche! Error: {e}")
 
-@bot.tree.command(name="stop", description="Stop the music")
+@bot.tree.command(name="stop", description="Stop music")
 async def stop(interaction: discord.Interaction):
     bot_vc = interaction.guild.voice_client
 
