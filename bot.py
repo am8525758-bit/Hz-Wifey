@@ -6,7 +6,7 @@ import os
 from http.server import HTTPServer, BaseHTTPRequestHandler
 import threading
 
-# Fake Web Server for Render
+# Fake Web Server for Render Keep-Alive
 class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         self.send_response(200)
@@ -18,7 +18,6 @@ def run_web_server():
     server = HTTPServer(('0.0.0.0', port), SimpleHTTPRequestHandler)
     server.serve_forever()
 
-# Start Web Server in Background
 threading.Thread(target=run_web_server, daemon=True).start()
 
 # Discord Bot Setup
