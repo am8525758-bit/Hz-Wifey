@@ -6,7 +6,7 @@ import os
 from http.server import HTTPServer, BaseHTTPRequestHandler
 import threading
 
-# Render-এর জন্য Web Server Keep-Alive
+# Render Keep-Alive Server
 class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         self.send_response(200)
@@ -26,11 +26,12 @@ intents.message_content = True
 
 bot = commands.Bot(command_prefix="!", intents=intents)
 
+# SoundCloud Search Config to avoid YouTube Bot Block
 ytdl_format_options = {
     'format': 'bestaudio/best',
     'noplaylist': True,
     'quiet': True,
-    'default_search': 'ytsearch',
+    'default_search': 'scsearch',
     'source_address': '0.0.0.0',
 }
 
@@ -50,7 +51,7 @@ async def on_ready():
     except Exception as e:
         print(e)
 
-@bot.tree.command(name="play", description="Play audio from YouTube")
+@bot.tree.command(name="play", description="Play audio from SoundCloud / Direct Link")
 async def play(interaction: discord.Interaction, search: str):
     await interaction.response.defer()
     
@@ -68,13 +69,17 @@ async def play(interaction: discord.Interaction, search: str):
             await bot_vc.move_to(channel)
 
         loop = asyncio.get_event_loop()
-        data = await loop.run_in_executor(None, lambda: ytdl.extract_info(search, download=False))
-
-        if 'entries' in data and len(data['entries']) > 0:
-            data = data['entries'][0]
-
-        filename = data['url']
-        title = data.get('title', 'Audio')
+        
+        # Check if user provided a direct stream link
+        if search.startswith("http://") or search.startswith("https://"):
+            filename = search
+            title = "Direct Stream Audio"
+        else:
+            data = await loop.run_in_executor(None, lambda: ytdl.extract_info(search, download=False))
+            if 'entries' in data and len(data['entries']) > 0:
+                data = data['entries'][0]
+            filename = data['url']
+            title = data.get('title', 'Audio')
 
         if bot_vc.is_playing() or bot_vc.is_paused():
             bot_vc.stop()
