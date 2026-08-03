@@ -26,12 +26,10 @@ intents.message_content = True
 
 bot = commands.Bot(command_prefix="!", intents=intents)
 
-# SoundCloud Search Configuration (যাতে নাম লিখে সার্চ করলেই গান চলে আসে)
 ytdl_format_options = {
     'format': 'bestaudio/best',
     'noplaylist': True,
     'quiet': True,
-    'default_search': 'scsearch',
     'source_address': '0.0.0.0',
 }
 
@@ -51,8 +49,8 @@ async def on_ready():
     except Exception as e:
         print(e)
 
-@bot.tree.command(name="play", description="Search and play any song/naat")
-async def play(interaction: discord.Interaction, search: str):
+@bot.tree.command(name="play", description="Play song using YouTube/SoundCloud URL")
+async def play(interaction: discord.Interaction, url: str):
     await interaction.response.defer()
     
     if not interaction.user.voice:
@@ -70,16 +68,14 @@ async def play(interaction: discord.Interaction, search: str):
 
         loop = asyncio.get_event_loop()
         
-        # Check if direct link or text search
-        if search.startswith("http://") or search.startswith("https://"):
-            filename = search
-            title = "Direct Link Audio"
-        else:
-            data = await loop.run_in_executor(None, lambda: ytdl.extract_info(search, download=False))
-            if 'entries' in data and len(data['entries']) > 0:
-                data = data['entries'][0]
-            filename = data['url']
-            title = data.get('title', 'Audio')
+        # Extract audio info safely from URL
+        data = await loop.run_in_executor(None, lambda: ytdl.extract_info(url, download=False))
+        
+        if 'entries' in data and len(data['entries']) > 0:
+            data = data['entries'][0]
+
+        filename = data['url']
+        title = data.get('title', 'Requested Audio')
 
         if bot_vc.is_playing() or bot_vc.is_paused():
             bot_vc.stop()
