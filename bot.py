@@ -1,5 +1,6 @@
 import discord
 from discord.ext import commands
+import yt_dlp
 import asyncio
 import os
 from http.server import HTTPServer, BaseHTTPRequestHandler
@@ -25,10 +26,21 @@ intents.message_content = True
 
 bot = commands.Bot(command_prefix="!", intents=intents)
 
+# SoundCloud Search Configuration (যাতে নাম লিখে সার্চ করলেই গান চলে আসে)
+ytdl_format_options = {
+    'format': 'bestaudio/best',
+    'noplaylist': True,
+    'quiet': True,
+    'default_search': 'scsearch',
+    'source_address': '0.0.0.0',
+}
+
 ffmpeg_options = {
     'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5',
     'options': '-vn',
 }
+
+ytdl = yt_dlp.YoutubeDL(ytdl_format_options)
 
 @bot.event
 async def on_ready():
@@ -39,8 +51,8 @@ async def on_ready():
     except Exception as e:
         print(e)
 
-@bot.tree.command(name="play", description="Play Lofi Live Stream")
-async def play(interaction: discord.Interaction):
+@bot.tree.command(name="play", description="Search and play any song/naat")
+async def play(interaction: discord.Interaction, search: str):
     await interaction.response.defer()
     
     if not interaction.user.voice:
@@ -56,9 +68,18 @@ async def play(interaction: discord.Interaction):
         elif bot_vc.channel != channel:
             await bot_vc.move_to(channel)
 
-        # Direct stable Lofi Radio stream URL (No YouTube block!)
-        filename = "https://stream.zeno.fm/f3wvbbqmdg8uv"
-        title = "24/7 Lofi Radio Stream"
+        loop = asyncio.get_event_loop()
+        
+        # Check if direct link or text search
+        if search.startswith("http://") or search.startswith("https://"):
+            filename = search
+            title = "Direct Link Audio"
+        else:
+            data = await loop.run_in_executor(None, lambda: ytdl.extract_info(search, download=False))
+            if 'entries' in data and len(data['entries']) > 0:
+                data = data['entries'][0]
+            filename = data['url']
+            title = data.get('title', 'Audio')
 
         if bot_vc.is_playing() or bot_vc.is_paused():
             bot_vc.stop()
@@ -68,7 +89,7 @@ async def play(interaction: discord.Interaction):
 
         await interaction.followup.send(f"🎵 **Playing:** {title}")
     except Exception as e:
-        await interaction.followup.send(f"❌ Error: {e}")
+        await interaction.followup.send(f"❌ Gan bajate somossha hocche! Error: {e}")
 
 @bot.tree.command(name="stop", description="Stop audio")
 async def stop(interaction: discord.Interaction):
