@@ -6,7 +6,7 @@ import os
 from http.server import HTTPServer, BaseHTTPRequestHandler
 import threading
 
-# Render Keep-Alive Server
+# Render Keep-Alive Web Server
 class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         self.send_response(200)
@@ -26,10 +26,12 @@ intents.message_content = True
 
 bot = commands.Bot(command_prefix="!", intents=intents)
 
+# SoundCloud Search Configuration (YouTube block পুরোপুরি এড়ানোর জন্য)
 ytdl_format_options = {
     'format': 'bestaudio/best',
     'noplaylist': True,
     'quiet': True,
+    'default_search': 'scsearch',
     'source_address': '0.0.0.0',
 }
 
@@ -49,12 +51,12 @@ async def on_ready():
     except Exception as e:
         print(e)
 
-@bot.tree.command(name="play", description="Play song using YouTube/SoundCloud URL")
-async def play(interaction: discord.Interaction, url: str):
+@bot.tree.command(name="play", description="Search and play any song or naat")
+async def play(interaction: discord.Interaction, search: str):
     await interaction.response.defer()
     
     if not interaction.user.voice:
-        await interaction.followup.send("Ami apnar sathe voice channel-e nei! Prothome voice-e join korun.")
+        await interaction.followup.send("❌ Prothome Voice Channel-e join korun!")
         return
 
     channel = interaction.user.voice.channel
@@ -68,8 +70,8 @@ async def play(interaction: discord.Interaction, url: str):
 
         loop = asyncio.get_event_loop()
         
-        # Extract audio info safely from URL
-        data = await loop.run_in_executor(None, lambda: ytdl.extract_info(url, download=False))
+        # SoundCloud থেকে সরাসরি সার্চ করে অডিও লিংক বের করবে
+        data = await loop.run_in_executor(None, lambda: ytdl.extract_info(search, download=False))
         
         if 'entries' in data and len(data['entries']) > 0:
             data = data['entries'][0]
@@ -87,7 +89,7 @@ async def play(interaction: discord.Interaction, url: str):
     except Exception as e:
         await interaction.followup.send(f"❌ Gan bajate somossha hocche! Error: {e}")
 
-@bot.tree.command(name="stop", description="Stop audio")
+@bot.tree.command(name="stop", description="Stop the music")
 async def stop(interaction: discord.Interaction):
     bot_vc = interaction.guild.voice_client
 
@@ -97,9 +99,9 @@ async def stop(interaction: discord.Interaction):
     elif bot_vc:
         await interaction.response.send_message("Kono gan cholche na!")
     else:
-        await interaction.response.send_message("Ami kono VC-te nei!", ephemeral=True)
+        await interaction.response.send_message("❌ Ami kono VC-te nei!", ephemeral=True)
 
-@bot.tree.command(name="leave", description="Bot leaves VC")
+@bot.tree.command(name="leave", description="Make bot leave VC")
 async def leave(interaction: discord.Interaction):
     bot_vc = interaction.guild.voice_client
 
@@ -107,6 +109,6 @@ async def leave(interaction: discord.Interaction):
         await bot_vc.disconnect()
         await interaction.response.send_message("👋 VC theke leave nilam!")
     else:
-        await interaction.response.send_message("Ami kono VC-te nei!", ephemeral=True)
+        await interaction.response.send_message("❌ Ami kono VC-te nei!", ephemeral=True)
 
 bot.run(os.getenv('DISCORD_TOKEN'))
