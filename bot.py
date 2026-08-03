@@ -6,7 +6,7 @@ import os
 from http.server import HTTPServer, BaseHTTPRequestHandler
 import threading
 
-# Fake Web Server for Render Keep-Alive
+# Fake Web Server for Render
 class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         self.send_response(200)
@@ -28,15 +28,9 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 
 ytdl_format_options = {
     'format': 'bestaudio/best',
-    'outtmpl': '%(extractor)s-%(id)s-%(title)s.%(ext)s',
-    'restrictfilenames': True,
     'noplaylist': True,
-    'nocheckcertificate': True,
-    'ignoreerrors': False,
-    'logtostderr': False,
     'quiet': True,
-    'no_warnings': True,
-    'default_search': 'auto',
+    'default_search': 'ytsearch',
     'source_address': '0.0.0.0',
 }
 
@@ -67,27 +61,30 @@ async def play(interaction: discord.Interaction, search: str):
     channel = interaction.user.voice.channel
     bot_vc = interaction.guild.voice_client
 
-    if bot_vc is None:
-        bot_vc = await channel.connect()
-    elif bot_vc.channel != channel:
-        await bot_vc.move_to(channel)
+    try:
+        if bot_vc is None:
+            bot_vc = await channel.connect()
+        elif bot_vc.channel != channel:
+            await bot_vc.move_to(channel)
 
-    loop = asyncio.get_event_loop()
-    data = await loop.run_in_executor(None, lambda: ytdl.extract_info(search, download=False))
+        loop = asyncio.get_event_loop()
+        data = await loop.run_in_executor(None, lambda: ytdl.extract_info(search, download=False))
 
-    if 'entries' in data:
-        data = data['entries'][0]
+        if 'entries' in data and len(data['entries']) > 0:
+            data = data['entries'][0]
 
-    filename = data['url']
-    title = data.get('title', 'Audio')
+        filename = data['url']
+        title = data.get('title', 'Audio')
 
-    if bot_vc.is_playing() or bot_vc.is_paused():
-        bot_vc.stop()
+        if bot_vc.is_playing() or bot_vc.is_paused():
+            bot_vc.stop()
 
-    source = discord.FFmpegPCMAudio(filename, **ffmpeg_options)
-    bot_vc.play(source)
+        source = discord.FFmpegPCMAudio(filename, **ffmpeg_options)
+        bot_vc.play(source)
 
-    await interaction.followup.send(f"🎵 **Playing:** {title}")
+        await interaction.followup.send(f"🎵 **Playing:** {title}")
+    except Exception as e:
+        await interaction.followup.send(f"❌ Gan bajate somossha hocche! Error: {e}")
 
 @bot.tree.command(name="stop", description="Stop audio")
 async def stop(interaction: discord.Interaction):
