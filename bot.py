@@ -8,12 +8,11 @@ import threading
 import urllib.request
 import time
 
-# Render Keep-Alive Web Server
 class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         self.send_response(200)
         self.end_headers()
-        self.wfile.write(b'Bot is 24/7 online!')
+        self.wfile.write(b'Bot is online!')
 
 def run_web_server():
     port = int(os.environ.get("PORT", 8080))
@@ -22,7 +21,6 @@ def run_web_server():
 
 threading.Thread(target=run_web_server, daemon=True).start()
 
-# Auto Self-Ping to Keep Bot Online 24/7
 def self_ping():
     time.sleep(10)
     render_url = os.environ.get("RENDER_EXTERNAL_URL")
@@ -36,13 +34,11 @@ def self_ping():
 
 threading.Thread(target=self_ping, daemon=True).start()
 
-# Discord Bot Setup
 intents = discord.Intents.default()
 intents.message_content = True
 
 bot = commands.Bot(command_prefix="!", intents=intents)
 
-# SoundCloud & Direct Safe Stream Config
 ytdl_format_options = {
     'format': 'bestaudio/best',
     'noplaylist': True,
@@ -86,7 +82,6 @@ async def play(interaction: discord.Interaction, query: str):
 
         loop = asyncio.get_event_loop()
         
-        # Safe link or SoundCloud search check
         if query.startswith("http://") or query.startswith("https://"):
             filename = query
             title = "Direct Stream URL"
@@ -133,4 +128,8 @@ async def leave(interaction: discord.Interaction):
     else:
         await interaction.response.send_message("❌ Ami kono VC-te nei!", ephemeral=True)
 
-bot.run(os.getenv('DISCORD_TOKEN'))
+TOKEN = os.getenv('DISCORD_TOKEN')
+if TOKEN:
+    bot.run(TOKEN)
+else:
+    print("❌ DISCORD_TOKEN paoa jayni!")
