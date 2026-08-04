@@ -6,13 +6,14 @@ import os
 from http.server import HTTPServer, BaseHTTPRequestHandler
 import threading
 import urllib.request
+import time
 
-# Render Keep-Alive Web Server + Self Ping Loop
+# Render Keep-Alive Web Server
 class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         self.send_response(200)
         self.end_headers()
-        self.wfile.write(b'Bot is 24/7 alive and running!')
+        self.wfile.write(b'Bot is 24/7 online!')
 
 def run_web_server():
     port = int(os.environ.get("PORT", 8080))
@@ -21,8 +22,9 @@ def run_web_server():
 
 threading.Thread(target=run_web_server, daemon=True).start()
 
-# Self-Ping Mechanism: বোট নিজে নিজেই প্রতি ৪ মিনিট পরপর নিজের সার্ভারে হিট করবে যাতে ঘুম না পায়!
+# Auto Self-Ping to Keep Bot Online 24/7
 def self_ping():
+    time.sleep(10)
     render_url = os.environ.get("RENDER_EXTERNAL_URL")
     if render_url:
         while True:
@@ -30,8 +32,7 @@ def self_ping():
                 urllib.request.urlopen(render_url)
             except Exception:
                 pass
-            import time
-            time.sleep(240) # প্রতি ৪ মিনিট পর পর হিট করবে
+            time.sleep(240)
 
 threading.Thread(target=self_ping, daemon=True).start()
 
@@ -41,6 +42,7 @@ intents.message_content = True
 
 bot = commands.Bot(command_prefix="!", intents=intents)
 
+# SoundCloud & Direct Safe Stream Config
 ytdl_format_options = {
     'format': 'bestaudio/best',
     'noplaylist': True,
@@ -65,7 +67,7 @@ async def on_ready():
     except Exception as e:
         print(e)
 
-@bot.tree.command(name="play", description="Search and play audio")
+@bot.tree.command(name="play", description="Search and play audio safely")
 async def play(interaction: discord.Interaction, query: str):
     await interaction.response.defer()
     
@@ -83,13 +85,17 @@ async def play(interaction: discord.Interaction, query: str):
             await bot_vc.move_to(channel)
 
         loop = asyncio.get_event_loop()
-        data = await loop.run_in_executor(None, lambda: ytdl.extract_info(query, download=False))
         
-        if 'entries' in data and len(data['entries']) > 0:
-            data = data['entries'][0]
-
-        filename = data.get('url')
-        title = data.get('title', 'Requested Audio')
+        # Safe link or SoundCloud search check
+        if query.startswith("http://") or query.startswith("https://"):
+            filename = query
+            title = "Direct Stream URL"
+        else:
+            data = await loop.run_in_executor(None, lambda: ytdl.extract_info(query, download=False))
+            if 'entries' in data and len(data['entries']) > 0:
+                data = data['entries'][0]
+            filename = data.get('url')
+            title = data.get('title', 'Requested Audio')
 
         if not filename:
             await interaction.followup.send("❌ Audio stream khuje pawa jayni!")
