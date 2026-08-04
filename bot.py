@@ -5,13 +5,14 @@ import asyncio
 import os
 from http.server import HTTPServer, BaseHTTPRequestHandler
 import threading
+import urllib.request
 
-# Render Keep-Alive Web Server
+# Render Keep-Alive Web Server + Self Ping Loop
 class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         self.send_response(200)
         self.end_headers()
-        self.wfile.write(b'Bot is online!')
+        self.wfile.write(b'Bot is 24/7 alive and running!')
 
 def run_web_server():
     port = int(os.environ.get("PORT", 8080))
@@ -20,13 +21,26 @@ def run_web_server():
 
 threading.Thread(target=run_web_server, daemon=True).start()
 
+# Self-Ping Mechanism: বোট নিজে নিজেই প্রতি ৪ মিনিট পরপর নিজের সার্ভারে হিট করবে যাতে ঘুম না পায়!
+def self_ping():
+    render_url = os.environ.get("RENDER_EXTERNAL_URL")
+    if render_url:
+        while True:
+            try:
+                urllib.request.urlopen(render_url)
+            except Exception:
+                pass
+            import time
+            time.sleep(240) # প্রতি ৪ মিনিট পর পর হিট করবে
+
+threading.Thread(target=self_ping, daemon=True).start()
+
 # Discord Bot Setup
 intents = discord.Intents.default()
 intents.message_content = True
 
 bot = commands.Bot(command_prefix="!", intents=intents)
 
-# SoundCloud Search Config (YouTube block এবং 'url' error এড়ানোর জন্য)
 ytdl_format_options = {
     'format': 'bestaudio/best',
     'noplaylist': True,
@@ -51,7 +65,7 @@ async def on_ready():
     except Exception as e:
         print(e)
 
-@bot.tree.command(name="play", description="Search and play song")
+@bot.tree.command(name="play", description="Search and play audio")
 async def play(interaction: discord.Interaction, query: str):
     await interaction.response.defer()
     
@@ -69,22 +83,16 @@ async def play(interaction: discord.Interaction, query: str):
             await bot_vc.move_to(channel)
 
         loop = asyncio.get_event_loop()
-        
-        # Safe extraction for SoundCloud search query
         data = await loop.run_in_executor(None, lambda: ytdl.extract_info(query, download=False))
         
-        if 'entries' in data:
-            if len(data['entries']) > 0:
-                data = data['entries'][0]
-            else:
-                await interaction.followup.send("❌ Kono gan khuje pawa jayni!")
-                return
+        if 'entries' in data and len(data['entries']) > 0:
+            data = data['entries'][0]
 
         filename = data.get('url')
         title = data.get('title', 'Requested Audio')
 
         if not filename:
-            await interaction.followup.send("❌ Audio URL extract kora সম্ভব হয়নি!")
+            await interaction.followup.send("❌ Audio stream khuje pawa jayni!")
             return
 
         if bot_vc.is_playing() or bot_vc.is_paused():
