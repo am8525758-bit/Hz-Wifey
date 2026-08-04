@@ -49,7 +49,7 @@ ytdl_format_options = {
 
 ffmpeg_options = {
     'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5',
-    'options': '-vn',
+    'options': '-vn -b:a 192k',
 }
 
 ytdl = yt_dlp.YoutubeDL(ytdl_format_options)
@@ -63,7 +63,7 @@ async def on_ready():
     except Exception as e:
         print(e)
 
-@bot.tree.command(name="play", description="Search and play audio safely")
+@bot.tree.command(name="play", description="Play audio stream safely")
 async def play(interaction: discord.Interaction, query: str):
     await interaction.response.defer()
     
@@ -99,8 +99,11 @@ async def play(interaction: discord.Interaction, query: str):
         if bot_vc.is_playing() or bot_vc.is_paused():
             bot_vc.stop()
 
-        source = discord.FFmpegPCMAudio(filename, **ffmpeg_options)
-        bot_vc.play(source)
+        # FFMPEG PCMAudio with optimized error-free pipeline
+        source = discord.PCMVolumeTransformer(discord.FFmpegPCMAudio(filename, **ffmpeg_options))
+        source.volume = 1.0
+        
+        bot_vc.play(source, after=lambda e: print(f'Player error: {e}') if e else None)
 
         await interaction.followup.send(f"🎵 **Playing:** {title}")
     except Exception as e:
