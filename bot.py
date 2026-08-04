@@ -49,7 +49,7 @@ ytdl_format_options = {
 
 ffmpeg_options = {
     'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5',
-    'options': '-vn -b:a 192k',
+    'options': '-vn -af volume=1.0',
 }
 
 ytdl = yt_dlp.YoutubeDL(ytdl_format_options)
@@ -63,7 +63,7 @@ async def on_ready():
     except Exception as e:
         print(e)
 
-@bot.tree.command(name="play", description="Play audio stream safely")
+@bot.tree.command(name="play", description="Play audio stream or search query")
 async def play(interaction: discord.Interaction, query: str):
     await interaction.response.defer()
     
@@ -82,6 +82,7 @@ async def play(interaction: discord.Interaction, query: str):
 
         loop = asyncio.get_event_loop()
         
+        # যদি ইউজার ডিরেক্ট লিংক দেয় অথবা সার্চ কোয়েরি দেয়
         if query.startswith("http://") or query.startswith("https://"):
             filename = query
             title = "Direct Stream URL"
@@ -99,11 +100,14 @@ async def play(interaction: discord.Interaction, query: str):
         if bot_vc.is_playing() or bot_vc.is_paused():
             bot_vc.stop()
 
-        # FFMPEG PCMAudio with optimized error-free pipeline
-        source = discord.PCMVolumeTransformer(discord.FFmpegPCMAudio(filename, **ffmpeg_options))
-        source.volume = 1.0
+        # Direct FFmpeg source without transformer block
+        source = discord.FFmpegPCMAudio(filename, **ffmpeg_options)
         
-        bot_vc.play(source, after=lambda e: print(f'Player error: {e}') if e else None)
+        def after_playing(error):
+            if error:
+                print(f'Player error: {error}')
+
+        bot_vc.play(source, after=after_playing)
 
         await interaction.followup.send(f"🎵 **Playing:** {title}")
     except Exception as e:
