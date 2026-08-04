@@ -39,17 +39,20 @@ intents.message_content = True
 
 bot = commands.Bot(command_prefix="!", intents=intents)
 
+# YouTube Bypass & Extra Options (Lara bot er moto kaj korar jnno)
 ytdl_format_options = {
     'format': 'bestaudio/best',
     'noplaylist': True,
     'quiet': True,
-    'default_search': 'scsearch',
+    'extractaudio': True,
+    'default_search': 'auto',
     'source_address': '0.0.0.0',
+    'cookiefile': None,
 }
 
 ffmpeg_options = {
     'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5',
-    'options': '-vn -af volume=1.0',
+    'options': '-vn',
 }
 
 ytdl = yt_dlp.YoutubeDL(ytdl_format_options)
@@ -63,7 +66,7 @@ async def on_ready():
     except Exception as e:
         print(e)
 
-@bot.tree.command(name="play", description="Play audio stream or search query")
+@bot.tree.command(name="play", description="Play song from YouTube name or URL")
 async def play(interaction: discord.Interaction, query: str):
     await interaction.response.defer()
     
@@ -82,25 +85,24 @@ async def play(interaction: discord.Interaction, query: str):
 
         loop = asyncio.get_event_loop()
         
-        # যদি ইউজার ডিরেক্ট লিংক দেয় অথবা সার্চ কোয়েরি দেয়
-        if query.startswith("http://") or query.startswith("https://"):
-            filename = query
-            title = "Direct Stream URL"
-        else:
-            data = await loop.run_in_executor(None, lambda: ytdl.extract_info(query, download=False))
-            if 'entries' in data and len(data['entries']) > 0:
-                data = data['entries'][0]
-            filename = data.get('url')
-            title = data.get('title', 'Requested Audio')
+        # YouTube link ba name jekono kichu holeo ekhane search/extract korbe
+        search_query = query if query.startswith("http://") or query.startswith("https://") else f"ytsearch:{query}"
+        
+        data = await loop.run_in_executor(None, lambda: ytdl.extract_info(search_query, download=False))
+        
+        if 'entries' in data and len(data['entries']) > 0:
+            data = data['entries'][0]
+
+        filename = data.get('url')
+        title = data.get('title', 'YouTube Audio')
 
         if not filename:
-            await interaction.followup.send("❌ Audio stream khuje pawa jayni!")
+            await interaction.followup.send("❌ YouTube theke audio khuje pawa jayni!")
             return
 
         if bot_vc.is_playing() or bot_vc.is_paused():
             bot_vc.stop()
 
-        # Direct FFmpeg source without transformer block
         source = discord.FFmpegPCMAudio(filename, **ffmpeg_options)
         
         def after_playing(error):
@@ -109,9 +111,9 @@ async def play(interaction: discord.Interaction, query: str):
 
         bot_vc.play(source, after=after_playing)
 
-        await interaction.followup.send(f"🎵 **Playing:** {title}")
+        await interaction.followup.send(f"🎵 **Playing from YouTube:** {title}")
     except Exception as e:
-        await interaction.followup.send(f"❌ Gan bajate somossha hocche! Error: {e}")
+        await interaction.followup.send(f"❌ YouTube gan bajate somossha hocche! Error: {e}")
 
 @bot.tree.command(name="stop", description="Stop music")
 async def stop(interaction: discord.Interaction):
