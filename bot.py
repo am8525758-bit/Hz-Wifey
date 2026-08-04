@@ -3,43 +3,13 @@ from discord.ext import commands
 import yt_dlp
 import asyncio
 import os
-from http.server import HTTPServer, BaseHTTPRequestHandler
-import threading
-import urllib.request
-import time
-
-class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
-    def do_GET(self):
-        self.send_response(200)
-        self.end_headers()
-        self.wfile.write(b'Bot is online!')
-
-def run_web_server():
-    port = int(os.environ.get("PORT", 8080))
-    server = HTTPServer(('0.0.0.0', port), SimpleHTTPRequestHandler)
-    server.serve_forever()
-
-threading.Thread(target=run_web_server, daemon=True).start()
-
-def self_ping():
-    time.sleep(10)
-    render_url = os.environ.get("RENDER_EXTERNAL_URL")
-    if render_url:
-        while True:
-            try:
-                urllib.request.urlopen(render_url)
-            except Exception:
-                pass
-            time.sleep(240)
-
-threading.Thread(target=self_ping, daemon=True).start()
 
 intents = discord.Intents.default()
 intents.message_content = True
 
 bot = commands.Bot(command_prefix="!", intents=intents)
 
-# YouTube Bot Block Bypass Configuration (Lara bot er moto kaj korar jonno)
+# YouTube & SoundCloud Support Configuration
 ytdl_format_options = {
     'format': 'bestaudio/best',
     'noplaylist': True,
