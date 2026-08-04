@@ -39,15 +39,14 @@ intents.message_content = True
 
 bot = commands.Bot(command_prefix="!", intents=intents)
 
-# YouTube Bypass & Extra Options (Lara bot er moto kaj korar jnno)
+# YouTube Bot Block Bypass Configuration (Lara bot er moto kaj korar jonno)
 ytdl_format_options = {
     'format': 'bestaudio/best',
     'noplaylist': True,
     'quiet': True,
-    'extractaudio': True,
     'default_search': 'auto',
     'source_address': '0.0.0.0',
-    'cookiefile': None,
+    'extractor_args': {'youtube': {'player_client': ['android', 'web']}},
 }
 
 ffmpeg_options = {
@@ -85,7 +84,6 @@ async def play(interaction: discord.Interaction, query: str):
 
         loop = asyncio.get_event_loop()
         
-        # YouTube link ba name jekono kichu holeo ekhane search/extract korbe
         search_query = query if query.startswith("http://") or query.startswith("https://") else f"ytsearch:{query}"
         
         data = await loop.run_in_executor(None, lambda: ytdl.extract_info(search_query, download=False))
